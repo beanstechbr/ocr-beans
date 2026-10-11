@@ -1,23 +1,30 @@
 # -*- mode: python ; coding: utf-8 -*-
-# OCR Beans - BeansTech 2026
-# Build: python -m PyInstaller "OCR Beans.spec" --noconfirm
+# OCR Beans v2.0 - BeansTech 2026
+# Build (na pasta do projeto, Windows):
+#   python -m PyInstaller "OCR Beans.spec" --noconfirm
+#
+# Caminhos relativos ao diretorio deste .spec (SPECPATH) — funciona em
+# qualquer lugar, sem hardcode de "c:/OCR Beans".
 
 import os
 import glob
 
+PROJECT_DIR = SPECPATH  # definido pelo PyInstaller
+
 # ---------------------------------------------------------------------------
 # Tesseract embutido - coleta apenas os arquivos necessarios
 # ---------------------------------------------------------------------------
-TESSERACT_DIR = r'C:\Program Files\Tesseract-OCR'
+TESSERACT_DIR = os.environ.get('TESSERACT_DIR', r'C:\Program Files\Tesseract-OCR')
 
 # Executavel principal
-tesseract_binaries = [
-    (os.path.join(TESSERACT_DIR, 'tesseract.exe'), 'tesseract'),
-]
+tesseract_binaries = []
+tesseract_exe = os.path.join(TESSERACT_DIR, 'tesseract.exe')
+if os.path.isfile(tesseract_exe):
+    tesseract_binaries.append((tesseract_exe, 'tesseract'))
 
-# Todas as DLLs necessarias
-for dll in glob.glob(os.path.join(TESSERACT_DIR, '*.dll')):
-    tesseract_binaries.append((dll, 'tesseract'))
+    # Todas as DLLs necessarias
+    for dll in glob.glob(os.path.join(TESSERACT_DIR, '*.dll')):
+        tesseract_binaries.append((dll, 'tesseract'))
 
 # Dados de idioma (apenas por/eng/osd — o minimo necessario)
 tesseract_datas = []
@@ -45,10 +52,10 @@ if os.path.isdir(tessconfigs_dir):
 # Analysis
 # ---------------------------------------------------------------------------
 a = Analysis(
-    ['c:/OCR Beans/ocr_beans_app.py'],
-    pathex=[],
+    [os.path.join(PROJECT_DIR, 'ocr_beans_app.py')],
+    pathex=[PROJECT_DIR],
     binaries=tesseract_binaries,
-    datas=tesseract_datas + [('c:/OCR Beans/ocr_beans.ico', '.')],
+    datas=tesseract_datas + [(os.path.join(PROJECT_DIR, 'ocr_beans.ico'), '.')],
     hiddenimports=[
         'fitz',
         'pymupdf',
@@ -67,6 +74,13 @@ a = Analysis(
         'notebook',
         'jupyter',
         'IPython',
+        # modulos da suite que NAO fazem parte do app desktop
+        'fastapi',
+        'uvicorn',
+        'pdf2docx',
+        'img2pdf',
+        'pypdf',
+        'mcp',
     ],
     noarchive=False,
     optimize=0,
@@ -92,5 +106,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='c:/OCR Beans/ocr_beans.ico',
+    icon=os.path.join(PROJECT_DIR, 'ocr_beans.ico'),
 )
