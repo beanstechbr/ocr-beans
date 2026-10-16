@@ -1,180 +1,101 @@
 # OCR Beans
 
-**OCR de PDFs judiciais brasileiros e imagens + suíte de conversão de PDF — via MCP, CLI, API web e app desktop.**
+**Extrator de texto de processos judiciais brasileiros — via MCP (Claude, ZCode e qualquer cliente MCP), CLI, API web e app desktop.**
 
-PDFs de tribunais brasileiros (TJ-SP, TRT, STJ) frequentemente usam fontes proprietárias que nenhuma IA consegue ler. O OCR Beans detecta automaticamente essas fontes corrompidas e aplica OCR quando necessário — transformando documentos ilegíveis em texto limpo que qualquer agente AI pode usar.
+PDFs de tribunais brasileiros (TJ-SP, TRT, STJ) frequentemente usam fontes
+proprietárias que **nenhuma IA consegue ler**: aparentam ter texto, mas a
+extração devolve lixo. O OCR Beans detecta automaticamente essas fontes
+corrompidas e aplica OCR **somente onde precisa** — o resto sai do texto
+nativo, instantâneo e perfeito.
 
-## O que está incluído
+**100% offline. Nenhum dado do processo sai da máquina. LGPD por construção.**
+
+## Instalação como plugin MCP (Claude Code / Cowork / ZCode)
+
+Os manifests estão na raiz deste repositório (`.claude-plugin/` e
+`.zcode-plugin/`) — aponte o marketplace ou adicione direto:
+
+```bash
+# Claude Code (local, sem servidor):
+claude mcp add ocr-beans -- uv run --no-project --python 3.12 \
+  --with pymupdf==1.28.2 --with pytesseract==0.3.13 \
+  --with Pillow==12.3.0 --with mcp==2.3.0 \
+  python3 ocr_beans/mcp_server.py
+```
+
+O `uv` (um bin único) provisiona o Python 3.12 e as dependências
+automaticamente na primeira execução. Tesseract é opcional: sem ele o texto
+nativo funciona; para páginas escaneadas, `apt install tesseract-ocr
+tesseract-ocr-por` (Linux), `brew install tesseract tesseract-lang` (macOS)
+ou o instalador UB-Mannheim (Windows, marcar *Portuguese*).
+
+## Ferramentas (MCP)
+
+| Tool | O que faz |
+|---|---|
+| `check_legibility` | Diagnóstico em < 1s: o PDF precisa de OCR? |
+| `ocr_pdf` | Processo inteiro; ≤30 págs devolve o texto, maiores salvam .txt + resumo |
+| `ocr_page` | Páginas específicas ("1-5", "3,7,9") — para processos de milhares de fls. |
+| `ocr_image` | Prints de decisões, fotos de documentos, scans avulsos |
+| `batch_ocr` | Pasta inteira de PDFs (até 50 por vez) |
+
+Cada página sai marcada como `TEXTO` ou `OCR`, com o número da folha
+(`fls. N`) pronto para citação em petição.
+
+## Qualidade — números medidos, não estimados
+
+- **475/475 páginas** com decisão e conteúdo 100% idênticos ao motor do
+  executável original (OCRBeans.exe) — comparação página a página em
+  processos reais do TJSP; motor conferido contra o bytecode do `.exe`
+  (29 funções, idênticas)
+- **20 páginas/segundo** em texto nativo · **1,76 s por página** corrompida
+  (Tesseract 300 DPI, `por`, `--psm 6`)
+- **Determinístico**: mesmo arquivo, mesmo texto — sem alucinação de acentos
+  (modelos de visão erraram "DE DIREito" e "JUNDIAI" nesta mesma página que
+  o motor extrai perfeita)
+- Segurança: validação de caminho anti-traversal, limites de DPI/páginas/
+  tamanho/tamanho de lote, **zero chamadas de rede** no código
+- Bateria de produção 16/16 (autenticação, 5 tools, rejeições de segurança,
+  concorrência) no conector remoto
+
+## Conector remoto (opcional)
+
+Para quem prefere zero instalação: `https://mcp.beanstech.io/mcp` (MCP
+Streamable HTTP, autenticação OIDC/Keycloak, hospedado em São Paulo —
+território nacional). O plugin local **não depende** dele.
+
+## O que mais está incluído
 
 | Interface | Uso | Público |
 |-----------|-----|---------|
+| **MCP Server** | tools para Claude Code / agentes AI | Agentes AI |
 | **API Web** | `ocr-beans-api` — UI estilo iLovePDF + REST em `/api/*` | Programas e humanos |
-| **MCP Server** | `ocr-beans-mcp` — tools para Claude Code / agentes AI | Agentes AI |
-| **CLI** | `ocr-beans <comando>` — terminal | Scripts e automação |
-| **App Desktop** | `ocr_beans_app.py` — GUI (Windows/macOS/Linux) | Usuário final |
+| **CLI** | `ocr_beans <comando>` — terminal | Scripts e automação |
+| **App Desktop** | `ocr_beans_app.py` — GUI (Windows/macOS/Linux; `.exe` com Tesseract embutido via `OCR Beans.spec`) | Usuário final |
 
-## Funcionalidades
+### Conversões de PDF (estilo iLovePDF)
+- Imagens → PDF · PDF → imagens (zip por página) · PDF → Word (DOCX)
+- Juntar, dividir, extrair páginas, girar, comprimir (−33,6% medido em
+  contrato real), marca d'água, extrair imagens embutidas
 
-### OCR (o diferencial)
-- **PDF → Texto** com detecção automática de fonte corrompida (heurística para português jurídico)
-- **Imagem → Texto** (PNG, JPG, TIFF, BMP, WEBP, GIF)
-- **Diagnóstico rápido** (`check`): diz se o PDF precisa de OCR em < 1s, sem processar
+## Instalação da suíte completa
 
-### Conversões de PDF (estilo iLovePDF, mas via API/CLI)
-- Imagens → PDF
-- PDF → Imagens (zip com PNG/JPG por página)
-- PDF → Word (DOCX editável)
-- Juntar PDFs (merge)
-- Dividir / extrair páginas
-- Comprimir PDF (recompacta imagens embutidas — testado: −33,6% em contrato real)
-- Girar páginas (90/180/270)
-- Marca d'água de texto
-- Extrair imagens embutidas
-
-## Instalação rápida
-
-**Linux (Debian/Ubuntu):**
 ```bash
+# Linux
 sudo apt install tesseract-ocr tesseract-ocr-por
-pip install -r requirements.txt   # ou: pip install .
+pip install .            # ou: pip install -r requirements.txt
+
+# Docker (MCP remoto / API)
+docker build -t ocr-beans . && docker run -p 8080:8080 ocr-beans
 ```
 
-**macOS:**
-```bash
-brew install tesseract tesseract-lang
-pip install -r requirements.txt
-```
-
-**Windows:**
-1. Instale o Tesseract: https://github.com/UB-Mannheim/tesseract/wiki (marque "Portuguese")
-2. `pip install -r requirements.txt`
-
-Instruções detalhadas por SO: [docs/INSTALACAO.md](docs/INSTALACAO.md)
-
-## Uso rápido
-
-### API Web (humano + programas)
-
-```bash
-ocr-beans-api --port 8080
-# ou: python -m ocr_beans.api --port 8080
-```
-
-- UI web (clicar e arrastar): http://localhost:8080/
-- Documentação interativa (Swagger): http://localhost:8080/docs
-- Integração programática: [docs/API.md](docs/API.md)
-
-```bash
-# Exemplo: extrair texto de um PDF judicial via curl
-curl -F "file=@processo.pdf" http://localhost:8080/api/ocr/pdf -o processo.txt
-
-# Exemplo: OCR de uma imagem
-curl -F "file=@scan.png" http://localhost:8080/api/ocr/image
-```
-
-### CLI
-
-```bash
-ocr-beans pdf processo.pdf                    # extrai texto (OCR automático)
-ocr-beans imagem scan.png                     # OCR de imagem
-ocr-beans check processo.pdf                  # diagnóstico: precisa de OCR?
-ocr-beans juntar a.pdf b.pdf -o merged.pdf
-ocr-beans dividir doc.pdf --paginas 1-3,7 -o parte.pdf
-ocr-beans comprimir doc.pdf -o pequeno.pdf --qualidade 60
-ocr-beans girar doc.pdf --graus 90 -o girado.pdf
-ocr-beans marca-dagua doc.pdf --texto CONFIDENCIAL -o marcado.pdf
-ocr-beans pdf-para-imagens doc.pdf -o pags.zip --dpi 200
-ocr-beans imagens-para-pdf f1.png f2.jpg -o saida.pdf
-ocr-beans pdf-para-docx doc.pdf -o saida.docx
-ocr-beans extrair-imagens doc.pdf -o imagens.zip
-```
-
-Referência completa: [docs/CLI.md](docs/CLI.md)
-
-### MCP Server (Claude Code / agentes AI)
-
-Adicione ao seu `~/.claude.json` (seção `mcpServers`):
-
-```json
-{
-  "ocr-beans": {
-    "type": "stdio",
-    "command": "python",
-    "args": ["/caminho/para/OCR Beans/ocr_beans/mcp_server.py"]
-  }
-}
-```
-
-Tools disponíveis: `ocr_pdf`, `ocr_page`, `ocr_image`, `check_legibility`, `batch_ocr`.
-Detalhes: [docs/MCP.md](docs/MCP.md)
-
-### App Desktop (GUI)
-
-```bash
-python ocr_beans_app.py
-```
-
-Aceita PDFs **e imagens**. Para gerar o executável Windows com Tesseract embutido: `python -m PyInstaller "OCR Beans.spec" --noconfirm`.
-
-## Deploy (Docker / Cloud)
-
-```bash
-docker build -t ocr-beans .
-docker run -p 8080:8080 ocr-beans        # API web + REST
-```
-
-O container sobe a API. Para modo MCP remoto (streamable-http):
-```bash
-docker run -p 8080:8080 ocr-beans python -m ocr_beans.mcp_server --remote
-```
-
-### GCP Cloud Run
-
-```bash
-gcloud run deploy ocr-beans \
-  --source . \
-  --region southamerica-east1 \
-  --no-allow-unauthenticated \
-  --memory 2Gi --cpu 2 --timeout 300
-```
-
-## Segurança
-
-- **Path traversal**: caminhos com `..` rejeitados; uploads confinados ao diretório temporário
-- **Upload**: limite de 200MB por arquivo (configurável via `OCR_BEANS_MAX_UPLOAD_MB`)
-- **DPI**: limitado a 150–400 (evita OOM)
-- **Batch**: máximo 50 arquivos por operação
-- **Pages**: máximo 100 páginas por request no MCP
-
-Para deploy público, coloque autenticação na frente (IAM no GCP, ALB auth na AWS, ou reverse proxy com auth).
-
-## Arquitetura
-
-```
-ocr_beans/
-├── __init__.py       # Versão
-├── core.py           # Motor OCR multiplataforma (PDF + imagem, detecção de fonte corrompida)
-├── convert.py        # Conversões PDF (merge, split, compress, watermark, docx...)
-├── security.py       # Validações de input
-├── mcp_server.py     # MCP server (5 tools, stdio + HTTP, SDK 1.x e 2.x)
-├── api.py            # API FastAPI (REST + web UI)
-├── webui.py          # UI web embutida (single-page)
-└── cli.py            # CLI unificado
-```
-
-**Dependências principais:**
-- PyMuPDF — extração de texto nativo e renderização
-- Tesseract (pytesseract) — OCR quando texto nativo é corrompido
-- pypdf / img2pdf / pdf2docx — conversões
-- FastAPI + uvicorn — API web
-- MCP SDK — protocolo com agentes AI
-
-## Limitações conhecidas
-
-- Tesseract é excelente em texto corrido limpo (~99%), mas perde estrutura em tabelas
-  multiculunares e pode falhar em timbres. Roadmap: motor VLM opcional (Surya/PaddleOCR-VL).
-- PDF → DOCX funciona melhor em PDFs com texto nativo; scans viram imagem no DOCX.
+Docs completas em `docs/` (API, CLI, MCP, instalação, arquitetura, privacidade).
 
 ## Licença
 
-BeansTech 2026. Open-source (licença a definir).
+MIT — ver [LICENSE](LICENSE). Dependências: PyMuPDF (AGPL/comercial),
+Tesseract (Apache-2.0), Pillow (HPND), MCP SDK (MIT).
+
+---
+
+**BeansTech** · https://beanstech.io
