@@ -30,6 +30,17 @@ from ocr_beans.core import (
     processar_paginas,
     processar_pdf,
 )
+from ocr_beans.convert import (
+    adicionar_marca_dagua,
+    comprimir_pdf,
+    dividir_pdf,
+    extrair_imagens_pdf,
+    imagens_para_pdf,
+    juntar_pdfs,
+    pdf_para_docx,
+    pdf_para_imagens,
+    rotacionar_pdf,
+)
 from ocr_beans.security import (
     validate_batch,
     validate_directory,
@@ -287,6 +298,168 @@ async def batch_ocr(directory: str, output_directory: str | None = None, dpi: in
         f"{'=' * 70}\n" + "\n".join(results)
     )
     return summary
+
+
+# ---------------------------------------------------------------------------
+# Ferramentas de conversão de PDF (paridade com a API web)
+# ---------------------------------------------------------------------------
+
+def _out_padrao(pdf_path: str, suffix: str, ext: str) -> str:
+    """Gera nome de saída ao lado do arquivo de entrada."""
+    base = os.path.splitext(pdf_path)[0]
+    return f"{base}{suffix}{ext}"
+
+
+@mcp.tool()
+async def pdf_merge(pdf_paths: list[str], output_path: str) -> str:
+    """Junta vários PDFs em um só, na ordem informada.
+
+    Args:
+        pdf_paths: Lista de caminhos absolutos dos PDFs (mínimo 2).
+        output_path: Caminho do PDF resultante.
+    """
+    await anyio.to_thread.run_sync(lambda: juntar_pdfs(pdf_paths, output_path))
+    return f"PDFs unidos em: {output_path} ({len(pdf_paths)} arquivos)"
+
+
+@mcp.tool()
+async def pdf_split(pdf_path: str, pages: str, output_path: str) -> str:
+    """Extrai páginas específicas de um PDF para um novo PDF.
+
+    Args:
+        pdf_path: Caminho absoluto do PDF.
+        pages: Páginas a extrair. Formatos: "1", "1-5", "1,3,7", "2-4,8".
+        output_path: Caminho do PDF resultante.
+    """
+    page_list = validate_page_range(pages)
+    await anyio.to_thread.run_sync(lambda: dividir_pdf(pdf_path, output_path, page_list))
+    return f"Extraídas {len(page_list)} páginas para: {output_path}"
+
+
+@mcp.tool()
+async def pdf_compress(pdf_path: str, output_path: str = "", qualidade: int = 60) -> str:
+    """Comprime um PDF recompactando as imagens embutidas.
+
+    Args:
+        pdf_path: Caminho absoluto do PDF.
+        output_path: Saída (opcional; default: <nome>_comprimido.pdf).
+        qualidade: Qualidade das imagens, 10-95. Menor = menor arquivo. Default: 60.
+    """
+    if not output_path:
+        output_path = _out_padrao(pdf_path, "_comprimido", ".pdf")
+    info = await anyio.to_thread.run_sync(
+        lambda: comprimir_pdf(pdf_path, output_path, qualidade_imagem=qualidade)
+    )
+    return (
+        f"Comprimido: {output_path}\n"
+        f"  {info['tamanho_original'] // 1024} KB -> {info['tamanho_final'] // 1024} KB "
+        f"(-{info['reducao_pct']}%)"
+    )
+
+
+@mcp.tool()
+async def pdf_rotate(pdf_path: str, output_path: str, graus: int = 90,
+                     pages: str = "") -> str:
+    """Rotaciona páginas de um PDF.
+
+    Args:
+        pdf_path: Caminho absoluto do PDF.
+        output_path: Caminho do PDF resultante.
+        graus: 90, 180 ou 270. Default: 90.
+        pages: Páginas a girar (ex.: "1-3,7"). Vazio = todas.
+    """
+    page_list = validate_page_range(pages) if pages.strip() else None
+    await anyio.to_thread.run_sync(
+        lambda: rotacionar_pdf(pdf_path, output_path, graus=graus, pages=page_list)
+    )
+    return f"PDF girado em {graus}°: {output_path}"
+
+
+@mcp.tool()
+async def pdf_watermark(pdf_path: str, texto: str, output_path: str = "") -> str:
+    """Aplica marca d'água de texto diagonal em todas as páginas do PDF.
+
+    Args:
+        pdf_path: Caminho absoluto do PDF.
+        texto: Texto da marca d'água (ex.: "CONFIDENCIAL").
+        output_path: Saída (opcional; default: <nome>_marcado.pdf).
+    """
+    if not output_path:
+        output_path = _out_padrao(pdf_path, "_marcado", ".pdf")
+    await anyio.to_thread.run_sync(
+        lambda: adicionar_marca_dagua(pdf_path, output_path, texto)
+    )
+    return f"Marca d'água '{texto}' aplicada: {output_path}"
+
+
+@mcp.tool()
+async def pdf_to_images(pdf_path: str, output_zip: str = "", dpi: int = 200,
+                        fmt: str = "png", pages: str = "") -> str:
+    """Renderiza páginas do PDF como imagens e compacta em um .zip.
+
+    Args:
+        pdf_path: Caminho absoluto do PDF.
+        output_zip: Saída (opcional; default: <nome>_paginas.zip).
+        dpi: Resolução (150-400). Default: 200.
+        fmt: "png" ou "jpg". Default: png.
+        pages: Páginas (ex.: "1-3"). Vazio = todas.
+    """
+    dpi = validate_dpi(dpi)
+    if not output_zip:
+        output_zip = _out_padrao(pdf_path, "_paginas", ".zip")
+    page_list = validate_page_range(pages) if pages.strip() else None
+    out = await anyio.to_thread.run_sync(
+        lambda: pdf_para_imagens(pdf_path, output_zip, dpi=dpi, fmt=fmt, pages=page_list)
+    )
+    return f"Páginas renderizadas em: {out}"
+
+
+@mcp.tool()
+async def images_to_pdf(image_paths: list[str], output_path: str) -> str:
+    """Junta várias imagens (png/jpg/tif/bmp/webp) em um único PDF.
+
+    Args:
+        image_paths: Lista de caminhos absolutos das imagens, na ordem desejada.
+        output_path: Caminho do PDF resultante.
+    """
+    await anyio.to_thread.run_sync(lambda: imagens_para_pdf(image_paths, output_path))
+    return f"{len(image_paths)} imagem(ns) unidas em: {output_path}"
+
+
+@mcp.tool()
+async def pdf_to_docx(pdf_path: str, output_path: str = "", pages: str = "") -> str:
+    """Converte PDF para DOCX editável (melhor em PDFs com texto nativo).
+
+    Args:
+        pdf_path: Caminho absoluto do PDF.
+        output_path: Saída (opcional; default: <nome>.docx).
+        pages: Range contínuo de páginas (ex.: "1-5"). Vazio = todas.
+    """
+    if not output_path:
+        output_path = _out_padrao(pdf_path, "", ".docx")
+    page_list = validate_page_range(pages) if pages.strip() else None
+    out = await anyio.to_thread.run_sync(
+        lambda: pdf_para_docx(pdf_path, output_path, pages=page_list)
+    )
+    return f"DOCX criado em: {out}"
+
+
+@mcp.tool()
+async def pdf_extract_images(pdf_path: str, output_zip: str = "") -> str:
+    """Extrai todas as imagens embutidas de um PDF para um .zip.
+
+    Args:
+        pdf_path: Caminho absoluto do PDF.
+        output_zip: Saída (opcional; default: <nome>_imagens.zip).
+    """
+    if not output_zip:
+        output_zip = _out_padrao(pdf_path, "_imagens", ".zip")
+    info = await anyio.to_thread.run_sync(
+        lambda: extrair_imagens_pdf(pdf_path, output_zip)
+    )
+    if not info["output"]:
+        return "O PDF não contém imagens embutidas."
+    return f"{info['imagens']} imagem(ns) extraída(s) para: {info['output']}"
 
 
 def main():
