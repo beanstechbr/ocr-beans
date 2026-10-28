@@ -18,21 +18,18 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 
 from . import __version__
-from .core import (
-    IMAGE_EXTENSIONS,
-    check_legibility,
-    idiomas_disponiveis,
-    ocr_imagem,
-    tesseract_disponivel,
-)
-from .convert import (
-    _open_checked,
+from .core import IMAGE_EXTENSIONS, idiomas_disponiveis, tesseract_disponivel
+from .convert import _open_checked
+from . import backend
+from .backend import (
     adicionar_marca_dagua,
+    check_legibility,
     comprimir_pdf,
     dividir_pdf,
     extrair_imagens_pdf,
     imagens_para_pdf,
     juntar_pdfs,
+    ocr_imagem,
     pdf_para_docx,
     pdf_para_imagens,
     pdf_para_txt,
@@ -165,7 +162,14 @@ def health():
         "versao": __version__,
         "tesseract": tesseract_disponivel(),
         "idiomas": idiomas_disponiveis(),
+        "motor": backend.motor_ativo(),
     }
+
+
+@app.get("/api/engine")
+def engine_info():
+    """Motor de processamento em uso (pymupdf=AGPL | permissive=AGPL-free)."""
+    return backend.motor_ativo()
 
 
 @app.get("/api/tools")

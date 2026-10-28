@@ -24,22 +24,22 @@ except ImportError:
     _MCP_V1 = False
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from ocr_beans.core import (
-    check_legibility as _check_legibility,
-    ocr_imagem,
-    processar_paginas,
-    processar_pdf,
-)
-from ocr_beans.convert import (
+from ocr_beans.backend import (
     adicionar_marca_dagua,
     comprimir_pdf,
     dividir_pdf,
     extrair_imagens_pdf,
     imagens_para_pdf,
     juntar_pdfs,
+    ocr_imagem,
     pdf_para_docx,
     pdf_para_imagens,
+    processar_paginas,
+    processar_pdf,
     rotacionar_pdf,
+)
+from ocr_beans.backend import (
+    check_legibility as _check_legibility,
 )
 from ocr_beans.security import (
     validate_batch,
