@@ -13,7 +13,9 @@
 !/OCR Beans.spec
 !/ocr_beans/
 !/ocr_beans_app.py
+!/ocr_code.py
 !/docs/
+!/tests/
 
 # Dentro das pastas incluídas, ignora lixo
 __pycache__/
