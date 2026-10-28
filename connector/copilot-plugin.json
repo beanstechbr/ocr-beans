@@ -1,0 +1,33 @@
+{
+  "name": "OCR Beans",
+  "description": "OCR e ferramentas de PDF 100% locais: extrai texto de PDFs jurídicos com fontes corrompidas (tribunais BR), lê imagens via OCR, junta/divide/comprime/converte PDFs. Processamento local — nenhum dado sai da máquina.",
+  "version": "2.2.1",
+  "schema_version": "v2.2",
+  "capabilities": [
+    "document-processing",
+    "ocr",
+    "pdf-tools"
+  ],
+  "endpoints": {
+    "api_base": "http://localhost:8080",
+    "openapi": "http://localhost:8080/openapi.json",
+    "health": "http://localhost:8080/api/health",
+    "tools_catalog": "http://localhost:8080/api/tools"
+  },
+  "actions": [
+    { "name": "ocr_pdf", "endpoint": "/api/ocr/pdf", "method": "POST", "description": "Extrai texto de PDF com OCR automático" },
+    { "name": "ocr_image", "endpoint": "/api/ocr/image", "method": "POST", "description": "Extrai texto de imagem via OCR" },
+    { "name": "check_legibility", "endpoint": "/api/check", "method": "POST", "description": "Diagnostica se o PDF precisa de OCR" },
+    { "name": "merge", "endpoint": "/api/convert/merge", "method": "POST", "description": "Junta vários PDFs" },
+    { "name": "split", "endpoint": "/api/convert/split", "method": "POST", "description": "Extrai páginas do PDF" },
+    { "name": "compress", "endpoint": "/api/convert/compress", "method": "POST", "description": "Comprime o PDF" },
+    { "name": "rotate", "endpoint": "/api/convert/rotate", "method": "POST", "description": "Gira páginas do PDF" },
+    { "name": "watermark", "endpoint": "/api/convert/watermark", "method": "POST", "description": "Aplica marca d'água" },
+    { "name": "pdf_to_images", "endpoint": "/api/convert/pdf-to-images", "method": "POST", "description": "PDF para imagens (zip)" },
+    { "name": "images_to_pdf", "endpoint": "/api/convert/images-to-pdf", "method": "POST", "description": "Imagens para PDF" },
+    { "name": "pdf_to_docx", "endpoint": "/api/convert/pdf-to-docx", "method": "POST", "description": "PDF para Word editável" },
+    { "name": "extract_images", "endpoint": "/api/convert/extract-images", "method": "POST", "description": "Extrai imagens embutidas" }
+  ],
+  "auth": { "type": "none" },
+  "privacy": "Processamento 100% local. Nenhum arquivo é enviado a serviços externos."
+}

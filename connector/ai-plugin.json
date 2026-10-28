@@ -1,0 +1,18 @@
+{
+  "schema_version": "v1",
+  "name_for_human": "OCR Beans",
+  "name_for_model": "ocr_beans",
+  "description_for_human": "OCR e ferramentas de PDF 100% locais: extrai texto de PDFs jurídicos com fontes corrompidas, lê imagens, junta/divide/comprime/converte PDFs. Nenhum dado sai da sua máquina.",
+  "description_for_model": "Ferramenta para extrair texto de PDFs e imagens via OCR (detecta fontes corrompidas de tribunais brasileiros) e converter/organizar PDFs. Use ocr_pdf para extrair texto de PDF, ocr_image para imagens, check_legibility para diagnosticar se um PDF precisa de OCR, e os endpoints /api/convert/* para juntar, dividir, comprimir, girar, converter e extrair.",
+  "auth": {
+    "type": "none"
+  },
+  "api": {
+    "type": "openapi",
+    "url": "http://localhost:8080/openapi.json",
+    "is_user_authenticated": false
+  },
+  "logo_url": "http://localhost:8080/favicon.ico",
+  "contact_email": "contato@beanstech.com.br",
+  "legal_info_url": "http://localhost:8080/"
+}

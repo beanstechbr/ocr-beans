@@ -17,6 +17,7 @@
 !/benchmark_ocr.py
 !/docs/
 !/tests/
+!/connector/
 
 # Dentro das pastas incluídas, ignora lixo
 __pycache__/
