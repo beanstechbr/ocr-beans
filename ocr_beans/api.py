@@ -219,6 +219,8 @@ async def api_ocr_image(file: UploadFile = File(...), lang: str = Form("por"),
     sub = tempfile.mkdtemp(dir=_WORKDIR)
     try:
         src = await _salvar_upload(file, os.path.basename(sub))
+        if os.path.getsize(src) == 0:
+            raise HTTPException(422, "Arquivo vazio.")
         ext = os.path.splitext(src)[1].lower()
         if ext not in IMAGE_EXTENSIONS:
             raise HTTPException(422, f"Formato não suportado: {ext}")

@@ -6,7 +6,7 @@ Aplicativo com interface grafica para extracao de texto de PDFs,
 com deteccao automatica de fontes corrompidas (comum em PDFs judiciais).
 """
 
-import fitz  # PyMuPDF
+import pymupdf as fitz  # PyMuPDF (import moderno, sem warning)
 import pytesseract
 from PIL import Image
 import io
