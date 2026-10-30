@@ -18,15 +18,16 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 
 from . import __version__
-from .core import IMAGE_EXTENSIONS, idiomas_disponiveis, tesseract_disponivel
-from .convert import _open_checked
 from . import backend
 from .backend import (
+    IMAGE_EXTENSIONS,
+    _open_checked,
     adicionar_marca_dagua,
     check_legibility,
     comprimir_pdf,
     dividir_pdf,
     extrair_imagens_pdf,
+    idiomas_disponiveis,
     imagens_para_pdf,
     juntar_pdfs,
     ocr_imagem,
@@ -34,6 +35,7 @@ from .backend import (
     pdf_para_imagens,
     pdf_para_txt,
     rotacionar_pdf,
+    tesseract_disponivel,
 )
 from .webui import INDEX_HTML
 

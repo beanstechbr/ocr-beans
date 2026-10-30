@@ -41,6 +41,23 @@ def _abrir_saida_texto(path: str, mode: str = "w"):
     return open(resolved, mode, encoding="utf-8" if "b" not in mode else None)
 
 
+def _open_checked(path: str, mode: str):
+    """Validação de caminho para uploads da API (autossuficiente, sem motor)."""
+    if not path or "\x00" in path or ".." in path.replace("\\", "/").split("/"):
+        raise ValueError(f"Caminho inválido: {path!r}")
+    resolved = os.path.realpath(os.path.expanduser(path))
+    if "r" in mode:
+        if not os.path.isfile(resolved):
+            raise FileNotFoundError(f"Arquivo não encontrado: {path}")
+    else:
+        parent = os.path.dirname(resolved)
+        if not parent or not os.path.isdir(parent):
+            raise ValueError(f"Diretório de saída não existe: {path}")
+    if "b" in mode:
+        return open(resolved, mode)
+    return open(resolved, mode, encoding="utf-8")
+
+
 def motor_ativo() -> dict:
     """Descreve o motor em uso (para health/diagnóstico)."""
     return {
@@ -52,6 +69,31 @@ def motor_ativo() -> dict:
             else "PyMuPDF + Tesseract (AGPL — ver docs/LICENSE-NOTES.md)"
         ),
     }
+
+
+# Extensões de imagem aceitas (independente do motor)
+IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".webp", ".gif"}
+
+
+def idiomas_disponiveis() -> list[str]:
+    if ENGINE == "permissive":
+        try:
+            import pytesseract
+            return sorted(pytesseract.get_languages())
+        except Exception:
+            return []
+    return _core.idiomas_disponiveis()
+
+
+def tesseract_disponivel() -> bool:
+    if ENGINE == "permissive":
+        try:
+            import pytesseract
+            pytesseract.get_tesseract_version()
+            return True
+        except Exception:
+            return False
+    return _core.tesseract_disponivel()
 
 
 # --------------------------------------------------------------------------- #
